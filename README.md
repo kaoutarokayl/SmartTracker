@@ -176,7 +176,7 @@ user_settings : seuils personnalisés.
 
 # 1️⃣ Cloner le projet
 
-git clone https://github.com/kaoutarokayl/TrackerSmart.git
+git clone https://github.com/kaoutarokayl/SmartTracker.git
 
 cd smarttracker
 
