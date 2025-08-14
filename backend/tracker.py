@@ -1,0 +1,171 @@
+import sqlite3
+import time
+from datetime import datetime
+import pygetwindow as gw
+import json
+import sys
+import os
+import signal
+import threading
+
+class UsageTracker:
+    def __init__(self, user_id):
+        self.user_id = user_id
+        self.running = False
+        self.last_app = None
+        self.start_time = time.time()
+        self.conn = sqlite3.connect("usage_data.db", check_same_thread=False)
+        self.cursor = self.conn.cursor()
+
+    def get_active_window_name(self):
+        try:
+            window = gw.getActiveWindow()
+            if window and window.title:
+                return window.title
+        except:
+            pass
+        return None  # ← Retourne None au lieu de "Application inconnue"
+
+    def format_duration(self, seconds):
+        if seconds >= 3600:
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            secs = seconds % 60
+            return f"{hours}h {minutes}m {secs}s"
+        elif seconds >= 60:
+            minutes = seconds // 60
+            secs = seconds % 60
+            return f"{minutes}m {secs}s"
+        else:
+            return f"{seconds}s"
+
+    def normalize_app_name(self, app_name):
+        if app_name is None:
+            return None
+        name_map = {
+            "Visual Studio Code": "VS Code",
+            "Code - Visual Studio Code": "VS Code",
+            "Google Chrome": "Chrome",
+            "Microsoft Edge": "Edge",
+            "Mozilla Firefox": "Firefox",
+            "Visual Studio": "VS Code",  # Variantes possibles
+            "Chrome": "Chrome",
+            "Firefox": "Firefox",
+            "Edge": "Edge",
+            "Microsoft Word": "Word",    # Exemple supplémentaire
+            "Notepad": "Notepad",       # Exemple supplémentaire
+            # Ajoute d'autres mappings selon tes besoins
+        }
+        # Si le nom n'est pas dans name_map, tente de nettoyer avec split
+        cleaned_name = name_map.get(app_name, app_name.split(' - ').pop().strip() if '-' in app_name else app_name)
+        return cleaned_name
+
+    def save_session(self, app_name, start_time, duration):
+        if app_name is None:
+            return  # Ignore les applications inconnues
+
+        normalized_app_name = self.normalize_app_name(app_name)
+        if normalized_app_name is None:
+            return  # Ignore si la normalisation échoue
+
+        timestamp = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
+        self.cursor.execute('''
+            INSERT INTO usage (app_name, start_time, duration, user_id)
+            VALUES (?, ?, ?, ?)
+        ''', (normalized_app_name, timestamp, duration, self.user_id))
+        self.conn.commit()
+
+        print(f"[{timestamp}] {normalized_app_name} utilisé pendant {self.format_duration(duration)}")
+
+    def start_tracking(self):
+        self.running = True
+        print(f"🚀 Suivi démarré pour l'utilisateur {self.user_id}")
+        
+        try:
+            while self.running:
+                current_app = self.get_active_window_name()
+
+                if current_app != self.last_app:
+                    end_time = time.time()
+
+                    if self.last_app is not None and self.last_app is not None:
+                        duration = int(end_time - self.start_time)
+                        if duration > 0:
+                            self.save_session(self.last_app, self.start_time, duration)
+
+                    self.last_app = current_app
+                    self.start_time = time.time()
+
+                time.sleep(1)
+
+        except Exception as e:
+            print(f"❌ Erreur dans le tracker: {e}")
+        finally:
+            self.stop_tracking()
+
+    def stop_tracking(self):
+        if self.running:
+            self.running = False
+
+            if self.last_app is not None:
+                end_time = time.time()
+                duration = int(end_time - self.start_time)
+                if duration > 0:
+                    self.save_session(self.last_app, self.start_time, duration)
+
+            self.conn.close()
+            print("⏹️ Suivi arrêté")
+
+# Gestion des instances de tracker
+active_trackers = {}
+
+def start_tracker_for_user(user_id):
+    conn = sqlite3.connect("usage_data.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        print(f"⚠️ L'utilisateur avec ID {user_id} n'existe pas dans users")
+        conn.close()
+        return False
+    conn.close()
+
+    if user_id in active_trackers:
+        print(f"⚠️ Tracker déjà actif pour l'utilisateur {user_id}")
+        return False
+
+    tracker = UsageTracker(user_id)
+    active_trackers[user_id] = tracker
+    thread = threading.Thread(target=tracker.start_tracking, daemon=True)
+    thread.start()
+    return True
+
+def stop_tracker_for_user(user_id):
+    if user_id in active_trackers:
+        active_trackers[user_id].stop_tracking()
+        del active_trackers[user_id]
+        return True
+    return False
+
+def is_tracker_running(user_id):
+    return user_id in active_trackers and active_trackers[user_id].running
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        user_id = int(sys.argv[1])
+    else:
+        try:
+            with open("config_tracker.json") as f:
+                config = json.load(f)
+                user_id = config.get("user_id", 1)
+        except:
+            user_id = 1
+
+    tracker = UsageTracker(user_id)
+
+    def signal_handler(sig, frame):
+        for tracker in active_trackers.values():
+            tracker.stop_tracking()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    tracker.start_tracking()
