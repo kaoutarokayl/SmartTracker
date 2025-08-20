@@ -1,256 +1,298 @@
- ## 🚀 SmartTracker
-SmartTracker est une application full-stack permettant de suivre, analyser et optimiser l’utilisation des applications sur un ordinateur.
-Elle aide les utilisateurs à améliorer leur productivité grâce à des statistiques détaillées et des recommandations personnalisées, et fournit aux administrateurs des outils avancés de gestion et d’analyse.
+🚀 SmartTracker
 
-💡 Développée pour un usage interne (ex. : ERTC Technologies), avec un accent sur productivité, sécurité et analyse des données.
+SmartTracker est une application full‑stack visant à suivre, analyser et optimiser le temps d’utilisation des applications sur ordinateur. Elle combine un tracking en temps réel, des tableaux de bord interactifs, un module de pointage (attendance) et un moteur de recommandations. Le projet met l’accent sur la productivité, la sécurité, et l’analyse des données.
 
-## 📌 Table des Matières
+💡 Développé pour un usage interne (ex. ERTC Technologies).
+
+📌 Table des matières
+
 Fonctionnalités
 
-Architecture
+Architecture & Flux de données
 
 Technologies
 
-Structure des Fichiers
+Sécurité & Authentification (JWT)
 
-Base de Données
+Structure des fichiers
 
-Installation
+Base de données
+
+Pré‑requis
+
+Configuration (.env)
+
+Installation & Lancement
 
 Utilisation
 
 API Endpoints
 
+Modèle ML : catégorisation des applications
 
-## ✨ Fonctionnalités
-# 🖥 Utilisateur
-Suivi en temps réel des applications avec normalisation des noms.
+Tests & Débogage
 
-Statistiques visuelles : temps total, app la plus utilisée, répartition par catégorie.
+Bonnes pratiques
 
-Recommandations personnalisées :
+Améliorations futures
 
-Alertes en cas de dépassement de seuils (ex. >3h sur WhatsApp).
+Licence
 
-Suggestions d’optimisation.
+✨ Fonctionnalités
+Côté Utilisateur
 
-Calendrier & Pomodoro :
+Suivi en temps réel des applications actives (normalisation des noms).
 
-Gestion des tâches avec priorités et statuts.
+Statistiques visuelles : temps total, top applications, répartition par catégorie (Chart.js/Recharts).
 
-Timer intégré (25 min).
+Recommandations personnalisées (dépassement de seuils, hygiène de travail, pauses).
 
-Pointage (Attendance) : suivi des heures de travail, export CSV.
+Calendrier & Pomodoro : tâches (priorité, statut) + timer (25 min par défaut).
 
-Profil utilisateur : mise à jour infos, stats personnelles.
+Pointage (attendance) : heures d’arrivée/départ, calcul d’heures effectives, export CSV.
 
-# Notifications :
+Notifications : in‑app (bannières dynamiques) et email via smtplib.
 
-In-App (bannières dynamiques).
+Côté Administrateur
 
-Email (rapports, alertes).
+Gestion des utilisateurs (CRUD) et rôles.
 
-# 🔑 Administrateur
-Gestion des utilisateurs (CRUD).
+Stats globales & tendances (périodes 24h/7j/30j).
 
-Statistiques globales et tendances.
+Supervision du pointage + export.
 
-Supervision des pointages.
+Santé système (statut du tracker, volumétrie, etc.).
 
-Santé système.
-
-Export des données.
-
-## 🛠 Architecture
-
+🧭 Architecture & Flux de données
 Frontend (React)  →  API REST (Flask)  →  SQLite
          ↑                           ↓
-       Tracker.py     ←     Modèle ML (Joblib)
-       
-## 🧰 Technologies
-Frontend :
+       Auth (JWT)        Recommandations & ML (Joblib)
+         ↑                           ↓
+  Tracker.py (client)  ←  Scripts Python (analyse, emails)
 
-React.js, React Router, Tailwind CSS, Chart.js, Recharts, Framer Motion, EmailJS
+Flux simplifié
 
-Backend :
+Tracking : tracker.py capte l’application active, normalise le nom et envoie/stocke la durée (API/DB).
 
-Flask, SQLite, PyJWT, PyGetWindow, Pandas, Joblib, SMTPlib
+Catégorisation : le nom d’app est vectorisé (TF‑IDF) puis classé (RandomForest) → catégorie (Travail, Social…).
 
-Autres :
+Recommandations : script d’analyse (seuils & règles) + envoi d’emails via smtplib si dépassements.
 
-CSV statique (app_categories.csv)
+Visualisation : le frontend (React) interroge l’API (JWT) et affiche stats, graphiques et alertes.
 
-Modèle ML (category_model.joblib, vectorizer.joblib)
+🧰 Technologies
+Frontend
 
-## 📂 Structure des Fichiers
+React 18+, React Router (routes protégées), Hooks/Context (AuthContext)
+
+Tailwind CSS, Lucide (icônes), Framer Motion (animations)
+
+Chart.js & Recharts (graphes), React Calendar (planification)
+
+Axios (intercepteurs JWT), File‑Saver (export CSV), EmailJS (formulaires de contact, si utilisé)
+
+Backend
+
+Flask (API REST), Flask‑CORS
+
+SQLite (stockage), Pandas (stats), PyJWT (JWT), Werkzeug (hashing)
+
+PyGetWindow (capture fenêtre active), threading (processus de tracking)
+
+smtplib (emails SMTP), logging (journalisation)
+
+Machine Learning
+
+scikit‑learn : RandomForestClassifier, TfidfVectorizer
+
+Joblib : persistance category_model.joblib & vectorizer.joblib
+
+Outils & Divers
+
+app_categories.csv (mapping statique)
+
+Scripts : db_init.py, normalize_data.py, recommandation.py, recommender.py, train_model.py, test_usage.py
+
+🔐 Sécurité & Authentification (JWT)
+
+Authentification par JWT (PyJWT).
+
+Rôles : user et admin (contrôle d’accès côté API + garde de route côté frontend).
+
+Flux :
+
+Login → JWT signé avec SECRET_KEY.
+
+Frontend stocke le token (mémoire/contexte) et l’envoie via l’en‑tête Authorization: Bearer <token>.
+
+Intercepteur Axios : rafraîchit/redirige en cas de 401.
+
+Bonnes pratiques : durée de vie limitée, renouvellement, hachage des mots de passe (Werkzeug), CORS restrictif.
+
+📂 Structure des fichiers
 smarttracker/
-
-├── backend/                                   # Partie serveur et traitement des données
-
-│   ├── __pycache__/                           # Cache Python (à ignorer dans Git)
-
-│   ├── uploads/                               # Fichiers uploadés (CSV, logs...)
-
-│   ├── venv/                                  # Environnement virtuel Python (à ignorer)
-
-│   ├── api.py                                 # Serveur Flask principal et routes API
-
+├── backend/                                   # Serveur & traitements
+│   ├── __pycache__/                           # Cache Python (ignorer)
+│   ├── uploads/                               # Fichiers uploadés
+│   ├── venv/                                  # Environnement virtuel (ignorer)
+│   ├── api.py                                 # API Flask (auth, usage, tasks, admin…)
 │   ├── app_categories.csv                     # Mapping Application → Catégorie
-
-│   ├── category_model.joblib                   # Modèle ML pour prédire les catégories d'apps
-
-│   ├── config_tracker.json                     # Configuration du tracker (fréquence, exclusions)
-
-│   ├── db_init.py                              # Script d’initialisation de la base SQLite
-
-│   ├── email_utils.py                          # Gestion des envois d’emails
-
-│   ├── normalize_data.py                       # Normalisation des noms d’applications
-
-│   ├── recommandation.py                       # Génération de recommandations
-
-│   ├── recommender.py                          # Moteur central de recommandations
-
-│   ├── requirements.txt                        # Liste des dépendances backend
-
-│   ├── test_usage.py                           # Script de test du tracking d’usage
-
-│   ├── tracker.py                              # Suivi en temps réel des applications
-
-│   ├── train_model.py                          # Entraînement du modèle ML
-
-│   ├── usage_data.db                           # Base SQLite contenant les données
-
-│   ├── vectorizer.joblib                       # Transformateur de texte pour le ML
-
+│   ├── category_model.joblib                  # Modèle ML (catégorisation)
+│   ├── config_tracker.json                    # Config tracker (fréquence, exclusions)
+│   ├── db_init.py                             # Init DB (tables + données de test)
+│   ├── email_utils.py                         # Envoi d’emails (SMTP/smtplib)
+│   ├── normalize_data.py                      # Normalisation noms d’apps
+│   ├── recommandation.py                      # Génération de recommandations
+│   ├── recommender.py                         # Moteur de catégorisation/ML
+│   ├── requirements.txt                       # Dépendances backend
+│   ├── test_usage.py                          # Tests/validation usage
+│   ├── tracker.py                             # Tracking en temps réel
+│   ├── train_model.py                         # Entraînement du modèle ML
+│   ├── usage_data.db                          # Base SQLite
+│   └── vectorizer.joblib                      # Vectoriseur TF‑IDF
+│
 ├── frontend/                                  # Interface utilisateur
+│   └── src/
+│       ├── pages/                             # Pages principales
+│       │   ├── Dashboard.jsx                  # Tableau de bord utilisateur
+│       │   ├── Stats.jsx                      # Statistiques filtrées (7j/30j…)
+│       │   ├── Calendar.jsx                   # Tâches + Pomodoro
+│       │   ├── Attendance.jsx                 # Pointage (filtres + export)
+│       │   ├── AdminDashboard.jsx             # Vue administrateur
+│       │   └── ...
+│       ├── components/                        # Composants UI réutilisables
+│       │   ├── NotificationBanner.jsx         # Alertes in‑app
+│       │   ├── TrackerStatus.jsx              # Statut/Toggle tracker
+│       │   └── ...
+│       ├── context/
+│       │   └── AuthContext.js                 # Auth & rôles (JWT)
+│       └── services/
+│           ├── api.js                         # Axios (+ intercepteurs JWT)
+│           ├── emailService.js                # Envoi (EmailJS) si utilisé
+│           └── recommendations.js             # Logique client (rappels/suggestions)
+🗄 Base de données
 
-│   ├── src/                                   # Code source React
+Tables principales
 
-│   │   ├── pages/                             # Pages principales
+users(id, username, email, password_hash, role, last_login)
 
-│   │   │   ├── Dashboard.jsx                  # Tableau de bord utilisateur
+usage(id, user_id, app_name, start_time, duration)
 
-│   │   │   ├── Stats.jsx                      # Statistiques d’utilisation
+tasks(id, user_id, title, status, priority, time, date)
 
-│   │   │   ├── Calendar.jsx                   # Calendrier et gestion des tâches
+user_settings(user_id, app_name, max_duration)
 
-│   │   │   ├── AdminDashboard.jsx             # Tableau de bord administrateur
+attendance(username, arrival, departure, date)
 
-│   │   │   └── ...                            # Autres pages
+🧱 Pré‑requis
 
-│   │   ├── components/                        # Composants réutilisables
+Node.js ≥ 14
 
-│   │   │   ├── NotificationBanner.jsx         # Bandeau de notifications
+Python ≥ 3.8
 
-│   │   │   ├── TrackerStatus.jsx              # Statut du tracker
+Accès SMTP (ex. Gmail avec mot de passe d’application) pour smtplib
 
-│   │   │   └── ...                            # Autres composants UI
+(Optionnel) EmailJS pour les formulaires de contact côté frontend
 
-│   │   ├── context/                           # Gestion des états globaux
+⚙️ Configuration (.env)
 
-│   │   │   └── AuthContext.js                 # Contexte d’authentification
+Créer un fichier .env (ou variables d’environnement équivalentes) :
 
-│   │   └── services/                          # Appels API et services externes
+# Backend
+SECRET_KEY="change_me_super_secret"
+JWT_ALGORITHM="HS256"
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="votre.email@gmail.com"
+SMTP_PASSWORD="mot_de_passe_application"
 
-│   │       ├── api.js                         # Appels à l’API Flask
 
-│   │       ├── emailService.js                # Service d’envoi d’emails
+# Frontend
+VITE_API_BASE_URL="http://127.0.0.1:5000"
+EMAILJS_SERVICE_ID="xxxx"
+EMAILJS_TEMPLATE_ID="xxxx"
+EMAILJS_PUBLIC_KEY="xxxx"
 
-│   │       └── recommendations.js             # Récupération des recommandations
+Pensez à ne jamais committer vos secrets. Utilisez un fichier .env ignoré par Git.
 
-
-
-## 🗄 Base de Données
-Tables principales :
-
-users : informations et rôles.
-
-usage : logs des applications.
-
-tasks : tâches avec priorité/statut.
-
-user_settings : seuils personnalisés.
-
-## ⚙ Installation
-
-# 1️⃣ Cloner le projet
-
-git clone https://github.com/kaoutarokayl/SmartTracker.git
-
+🛠 Installation & Lancement
+1) Cloner le projet
+git clone <url-du-repo>
 cd smarttracker
-
-# 2️⃣ Backend
-
+2) Backend
 python -m venv venv
+source venv/bin/activate        # Unix/Mac
+venv\Scripts\activate           # Windows
+pip install -r backend/requirements.txt
+python backend/db_init.py       # crée la DB + compte admin (admin/admin123)
+python backend/api.py
 
-source venv/bin/activate   # Unix/Mac
+API : http://127.0.0.1:5000
 
-venv\Scripts\activate      # Windows
-
-pip install -r requirements.txt
-
-python db_init.py
-
-python api.py
-
-API disponible sur http://127.0.0.1:5000
-
-# 3️⃣ Frontend
-
+3) Frontend
+cd frontend
 npm install
-
 npm start
 
-Interface disponible sur http://localhost:3000
+UI : http://localhost:3000
 
-## ▶ Utilisation
+▶️ Utilisation
 
-Se connecter (admin/admin123 pour test)
+Inscription/Connexion (compte de test : admin / admin123).
 
-Démarrer le tracker (automatique au login)
+Démarrer le tracker : automatique au login (ou via TrackerStatus).
 
-Consulter le dashboard
+Explorer le Dashboard : stats, catégories, recommandations.
 
-Gérer tâches et pointages
+Gérer les tâches : calendrier + Pomodoro.
 
-Recevoir recommandations & alertes email
+Suivre le pointage : filtres (24h/7j/30j) + export CSV.
 
-## 📡 API Endpoints (Exemples)
+📡 API Endpoints
+Authentification
+POST /login                # { username, password } → { token, user }
+POST /register             # { username, email, password }
+POST /profile/update       # { username, email } (JWT)
+POST /profile/change-password  # { currentPassword, newPassword } (JWT)
 
-# Authentification :
+En‑tête : Authorization: Bearer <JWT>
 
-POST /login
-
-POST /register
-
-# Tracker :
-POST /tracker/start
-
-POST /tracker/stop
-
-GET /tracker/status
-
-# Usage :
-GET /usage/<user_id>
-
-# Admin :
-GET /admin/stats
-
-GET /admin/users
-
-## Outils utiles :
-
-SQLite Browser (inspection DB)
-
-Console navigateur
-
+Tracker / Usage
+POST /tracker/start        # Démarrer tracking (JWT)
+POST /tracker/stop         # Arrêter tracking (JWT)
+GET  /tracker/status       # { running | stopped } (JWT)
+GET  /usage/<user_id>      # Statistiques d’usage (JWT)
+GET  /categorize/<app_name>    # Catégorie ML ou mapping
+Admin
+GET  /admin/users                  # Liste des utilisateurs (admin)
+GET  /admin/stats?time_range=7|30|24
+GET  /admin/activity?time_range=7|30
+GET  /admin/users/stats?time_range=7|30
+GET  /admin/system/health
+GET  /admin/usage-trends?time_range=7|30
+Tasks & Attendance
+GET    /tasks?date=YYYY-MM-DD
+POST   /tasks                      # { user_id, title, status, priority, time, date }
+PATCH  /tasks/<id>                 # { status }
+DELETE /tasks/<id>
 
 
+GET    /attendance/<user_id>?time_range=24|7|30
+GET    /admin/attendance?time_range=24|7|30
 
+Exemple cURL (login)
 
+curl -X POST http://127.0.0.1:5000/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+🤖 Modèle ML : catégorisation des applications
 
+Dataset : app_categories.csv (colonnes : app_name, category).
 
+Vectorisation : TF‑IDF (TfidfVectorizer).
 
+Classifieur : RandomForest (RandomForestClassifier).
 
+Persistance : category_model.joblib, vectorizer.joblib (Joblib).
 
+**Entraînement (ex
